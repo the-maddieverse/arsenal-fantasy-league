@@ -62,34 +62,35 @@ function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  async function bootstrapUserData() {
-    if (!session) return
-
-    const fallback = session.user.email?.split('@')[0] || 'Manager'
-    const name = displayName || (session.user.user_metadata.display_name as string | undefined) || fallback
-
-    await supabase.from('profiles').upsert({ id: session.user.id, display_name: name })
-
-    const { data: myMembership, error: membershipError } = await supabase
-      .from('league_members')
-      .select('league_id')
-      .eq('user_id', session.user.id)
-      .maybeSingle()
-
-    if (membershipError) throw membershipError
-
-    if (!myMembership?.league_id) {
-      setLeague(null)
-      setMembers([])
-      return
-    }
-
-    await loadLeague(myMembership.league_id)
-  }
-
   useEffect(() => {
     if (!session) return
-    bootstrapUserData().catch((err: Error) => setMessage(err.message))
+
+    async function runBootstrap() {
+      const activeSession = session
+      if (!activeSession) return
+      const fallback = activeSession.user.email?.split('@')[0] || 'Manager'
+      const name = displayName || (activeSession.user.user_metadata.display_name as string | undefined) || fallback
+
+      await supabase.from('profiles').upsert({ id: activeSession.user.id, display_name: name })
+
+      const { data: myMembership, error: membershipError } = await supabase
+        .from('league_members')
+        .select('league_id')
+        .eq('user_id', activeSession.user.id)
+        .maybeSingle()
+
+      if (membershipError) throw membershipError
+
+      if (!myMembership?.league_id) {
+        setLeague(null)
+        setMembers([])
+        return
+      }
+
+      await loadLeague(myMembership.league_id)
+    }
+
+    runBootstrap().catch((err: Error) => setMessage(err.message))
   }, [session, displayName])
 
   async function loadLeague(leagueId: string) {
