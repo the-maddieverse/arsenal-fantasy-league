@@ -1,0 +1,30 @@
+name: Sync football data
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+    - cron: '30 10,13,16,19 * * *'
+  workflow_dispatch:
+    inputs:
+      leagueId:
+        description: League UUID for commissioner-triggered sync
+        required: false
+
+permissions: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Supabase edge function
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          LEAGUE_ID: ${{ github.event.inputs.leagueId }}
+        run: |
+          payload=$(jq -n --arg leagueId "$LEAGUE_ID" --arg source "scheduled" '{leagueId: (if $leagueId == "" then null else $leagueId end), source: $source}')
+          curl --fail-with-body \
+            -X POST "$SUPABASE_URL/functions/v1/sync-football-data" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$payload"
