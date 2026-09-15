@@ -87,8 +87,9 @@ Deno.serve(async () => {
       status: 200,
     })
   } catch (error) {
+    console.error('sync-arsenal-data failed', error)
     return new Response(
-      JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }),
+      JSON.stringify({ ok: false, error: 'Arsenal data sync failed' }),
       {
         headers: { 'Content-Type': 'application/json' },
         status: 500,
